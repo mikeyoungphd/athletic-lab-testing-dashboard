@@ -276,7 +276,7 @@ function showDashboard() {
   document.getElementById('loginScreen').hidden = true;
   document.getElementById('dashboardApp').hidden = false;
   document.getElementById('main').hidden = false;
-  document.getElementById('status').textContent = `${ALL_ATHLETES.length} athletes · ${RECENT_ATHLETES.length} active in past 30 days`;
+  document.getElementById('status').textContent = '';
   buildDropdown();
   render();
 }
