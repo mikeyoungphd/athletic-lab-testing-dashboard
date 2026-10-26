@@ -390,6 +390,8 @@ main {
   transition: background 0.18s;
 }
 .login-btn:hover { background: var(--crimson-dark); }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.login-input:disabled { opacity: 0.5; }
 .login-error {
   margin-top: 8px;
   padding: 8px 12px;

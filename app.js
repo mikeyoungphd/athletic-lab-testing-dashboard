@@ -68,11 +68,13 @@ function weekKey(ts) { return dayKey(mondayTs(ts)); }
 function fmtWeekRange(monTs) { return fmtDate(monTs); }
 
 // ---------- name → access code ----------
-// Convention: firstname.lastname (lowercase, first + last token).
+// Convention: firstname.lastname (lowercase, first token + last token).
 // e.g. "Ridhaan Deshpande" → "ridhaan.deshpande"
+// Compound surnames like "Carter Castellano-Staib" → "carter.castellano-staib"
+// (hyphens preserved, only spaces split tokens)
 // This distinguishes siblings far better than initials + partial surname.
 function nameToCode(name) {
-  const parts = name.trim().toLowerCase().replace(/[^a-z\s.-]/g, '').split(/[\s.-]+/).filter(Boolean);
+  const parts = name.trim().toLowerCase().replace(/[^a-z\s-]/g, '').split(/\s+/).filter(Boolean);
   if (parts.length < 2) return parts[0] || '';
   return parts[0] + '.' + parts[parts.length - 1];
 }
@@ -156,26 +158,30 @@ function gvizToCSV(data) {
 
 // ---------- load + parse ----------
 async function loadData() {
-  const err = document.getElementById('error');
+  const loginStatus = document.getElementById('loginStatus');
+  const loginError = document.getElementById('loginError');
+  const loginBtn = document.getElementById('loginBtn');
+  const loginInput = document.getElementById('loginInput');
   try {
-    let csv;
-    // Published CSV is primary (CORS-enabled, preserves text values)
-    try {
-      csv = await loadSheetCSV();
-    } catch (csvErr) {
-      console.warn('Published CSV failed, trying gviz JSONP:', csvErr.message);
-      csv = await loadSheetJSONP();
-    }
+    loginStatus.textContent = 'Loading data…';
+    loginBtn.disabled = true;
+    loginInput.disabled = true;
 
+    const csv = await loadSheetCSV();
     if (!csv || csv.length < 100) throw new Error('Empty response from Google Sheets');
 
     RAW = normalize(csv);
     computeAthletes();
-    document.getElementById('loginStatus').textContent = `Data loaded · ${ALL_ATHLETES.length} athletes`;
+    loginStatus.textContent = `Data loaded · ${ALL_ATHLETES.length} athletes · ${RECENT_ATHLETES.length} active`;
+    loginBtn.disabled = false;
+    loginInput.disabled = false;
+    loginInput.focus();
   } catch (e) {
-    document.getElementById('loginStatus').textContent = '';
-    err.textContent = 'Could not load dashboard data: ' + e.message;
-    err.hidden = false;
+    loginStatus.textContent = '';
+    loginError.textContent = 'Could not load dashboard data: ' + e.message;
+    loginError.hidden = false;
+    loginBtn.disabled = true;
+    loginInput.disabled = true;
   }
 }
 
@@ -257,8 +263,12 @@ function handleLogin() {
     }
   }
 
-  // Not found
-  errEl.textContent = 'Access code not recognized. Only athletes with test results in the past 30 days are eligible. Contact your coach if you need access.';
+  // Not found — check if data is loaded
+  if (!RAW || RAW.length === 0) {
+    errEl.textContent = 'Data is still loading. Please wait a moment and try again.';
+  } else {
+    errEl.textContent = 'Access code not recognized. Only athletes with test results in the past 30 days are eligible. Contact your coach if you need access.';
+  }
   errEl.hidden = false;
 }
 
