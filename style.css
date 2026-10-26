@@ -333,7 +333,7 @@ main {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: var(--crimson);
+  background: var(--slate);
 }
 .login-card {
   background: var(--surface);
