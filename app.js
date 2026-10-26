@@ -1,11 +1,15 @@
 // app.js — Athletic Lab Performance Testing Dashboard (Static / GitHub Pages)
-// Fetches the live Google Sheet client-side via gviz JSONP (no backend needed).
-// Preserves all dashboard logic: weekly aggregation, ≥2SD outlier filtering,
-// trendlines, transposed table, landscape print.
+// Fetches the live Google Sheet client-side via direct CSV export (CORS-enabled)
+// and gviz JSONP fallback. Preserves all dashboard logic: weekly aggregation,
+// ≥2SD outlier filtering, trendlines, transposed table, landscape print.
+// Includes a client-side access gate (admin + athlete/parent login).
 
 // ---- Google Sheet config ----
 const SHEET_ID = '1d4cbfVxjZAV0GMFM8TfqGxtui-_1egKJS_Jpw7dyrFc';
 const SHEET_GID = '0';
+
+// ---- admin password ----
+const ADMIN_PASSWORD = 'athlab';
 
 // ---- brand colors ----
 const RED = '#9C1B20';
@@ -31,9 +35,13 @@ const CHART_DEFS = {
 };
 
 let RAW = null;
-let ATHLETES = [];
+let ALL_ATHLETES = [];      // every athlete with matched data (sorted)
+let RECENT_ATHLETES = [];   // athletes with data in the past 30 days (sorted)
+let ARCHIVED_ATHLETES = [];  // all athletes NOT in recent (sorted)
 let charts = {};
 let currentAthlete = null;
+let loginMode = null;        // 'admin' | 'athlete' | null
+let loginAthlete = null;     // athlete name when loginMode === 'athlete'
 
 // ---------- date helpers ----------
 function parseDate(s) {
@@ -59,9 +67,28 @@ function mondayTs(ts) {
 function weekKey(ts) { return dayKey(mondayTs(ts)); }
 function fmtWeekRange(monTs) { return fmtDate(monTs); }
 
-// ---------- client-side data loading via gviz JSONP ----------
-// Uses Google Visualization API with JSONP callback — works from any static host
-// (GitHub Pages, S3, etc.) without a backend proxy.
+// ---------- name → access code ----------
+// Convention: firstname.lastname (lowercase, first + last token).
+// e.g. "Ridhaan Deshpande" → "ridhaan.deshpande"
+// This distinguishes siblings far better than initials + partial surname.
+function nameToCode(name) {
+  const parts = name.trim().toLowerCase().replace(/[^a-z\s.-]/g, '').split(/[\s.-]+/).filter(Boolean);
+  if (parts.length < 2) return parts[0] || '';
+  return parts[0] + '.' + parts[parts.length - 1];
+}
+
+// ---------- client-side data loading ----------
+// Primary: published CSV URL (CORS-enabled, preserves text values in mixed
+// columns like the "Right"/"Left" variant for 5-10-5 that gviz drops).
+// The sheet must be published to the web (File → Share → Publish to web).
+// Fallback: gviz JSONP (drops text values in number-typed columns)
+const PUB_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkphOXExzRC7qBCxCKwFInfw32cHaqP7j_kz93ixRUBWO3W-ufMQLX5gvqmWHu6M6XsWzSVv4pwJFI/pub?gid=0&single=true&output=csv';
+
+async function loadSheetCSV() {
+  const res = await fetch(PUB_CSV_URL);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.text();
+}
 function loadSheetJSONP() {
   return new Promise((resolve, reject) => {
     const cbName = '__gviz_cb_' + Date.now();
@@ -90,7 +117,6 @@ function loadSheetJSONP() {
       }
     };
 
-    // Timeout after 30s
     setTimeout(() => {
       if (!done) {
         if (script.parentNode) document.head.removeChild(script);
@@ -103,28 +129,22 @@ function loadSheetJSONP() {
   });
 }
 
-// Convert gviz JSON response to CSV text (same format the old backend returned)
+// Convert gviz JSON response to CSV text
 function gvizToCSV(data) {
   if (!data || !data.table || !data.table.rows) throw new Error('Empty gviz response');
   const cols = data.table.cols || [];
   const rows = data.table.rows;
   const lines = [];
-  // Header row
   lines.push(cols.map(c => `"${(c.label || c.id || '').replace(/"/g, '""')}"`).join(','));
-  // Data rows
   for (const row of rows) {
     const cells = (row.c || []).map(cell => {
       if (!cell || cell.v == null) return '';
       let v = String(cell.v);
-      // gviz returns dates as "Date(year,month,day,...)" strings; extract the date
       if (v.startsWith('Date(')) {
         const m = v.match(/Date\((\d+),(\d+),(\d+)/);
         if (m) {
           const yr = +m[1], mo = +m[2] + 1, dy = +m[3];
           v = `${yr}/${String(mo).padStart(2,'0')}/${String(dy).padStart(2,'0')}`;
-          // Append time if present
-          const tm = v.match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)/);
-          if (tm) v += ` ${String(+tm[4]).padStart(2,'0')}:${String(+tm[5]).padStart(2,'0')}:${String(+tm[6]).padStart(2,'0')}`;
         }
       }
       return `"${v.replace(/"/g, '""')}"`;
@@ -134,38 +154,26 @@ function gvizToCSV(data) {
   return lines.join('\n');
 }
 
-// Fallback: try direct CSV fetch (works if Google sends CORS headers)
-async function loadSheetCSV() {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${SHEET_GID}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return await res.text();
-}
-
 // ---------- load + parse ----------
-async function load() {
-  const status = document.getElementById('status');
+async function loadData() {
   const err = document.getElementById('error');
   try {
     let csv;
-    // Try JSONP first (most reliable for static hosting), fall back to CSV fetch
+    // Published CSV is primary (CORS-enabled, preserves text values)
     try {
-      csv = await loadSheetJSONP();
-    } catch (jsonpErr) {
-      console.warn('JSONP failed, trying CSV fetch:', jsonpErr.message);
       csv = await loadSheetCSV();
+    } catch (csvErr) {
+      console.warn('Published CSV failed, trying gviz JSONP:', csvErr.message);
+      csv = await loadSheetJSONP();
     }
 
     if (!csv || csv.length < 100) throw new Error('Empty response from Google Sheets');
 
     RAW = normalize(csv);
-    computeEligible();
-    buildDropdown();
-    status.textContent = `${ATHLETES.length} eligible athletes · data updated ${new Date().toLocaleTimeString()}`;
-    document.getElementById('main').hidden = false;
-    render();
+    computeAthletes();
+    document.getElementById('loginStatus').textContent = `Data loaded · ${ALL_ATHLETES.length} athletes`;
   } catch (e) {
-    status.textContent = '';
+    document.getElementById('loginStatus').textContent = '';
     err.textContent = 'Could not load dashboard data: ' + e.message;
     err.hidden = false;
   }
@@ -201,31 +209,134 @@ function normalize(csv) {
   return recs;
 }
 
-function computeEligible() {
+function computeAthletes() {
   const cutoff = Date.now() - 30 * 24 * 3600 * 1000;
   const lastByAthlete = {};
+  const allSet = new Set();
   for (const r of RAW) {
+    allSet.add(r.athlete);
     if (r.ts >= cutoff) {
       if (!lastByAthlete[r.athlete] || r.ts > lastByAthlete[r.athlete]) {
         lastByAthlete[r.athlete] = r.ts;
       }
     }
   }
-  ATHLETES = Object.keys(lastByAthlete).sort((a, b) => a.localeCompare(b));
+  const recentSet = new Set(Object.keys(lastByAthlete));
+  RECENT_ATHLETES = [...recentSet].sort((a, b) => a.localeCompare(b));
+  ARCHIVED_ATHLETES = [...allSet].filter(a => !recentSet.has(a)).sort((a, b) => a.localeCompare(b));
+  ALL_ATHLETES = [...allSet].sort((a, b) => a.localeCompare(b));
+}
+
+// ---------- login ----------
+function handleLogin() {
+  const input = document.getElementById('loginInput');
+  const errEl = document.getElementById('loginError');
+  const code = input.value.trim().toLowerCase();
+
+  if (!code) {
+    errEl.textContent = 'Please enter an access code.';
+    errEl.hidden = false;
+    return;
+  }
+
+  // Admin check
+  if (code === ADMIN_PASSWORD) {
+    loginMode = 'admin';
+    loginAthlete = null;
+    showDashboard();
+    return;
+  }
+
+  // Athlete check: match code against eligible (recent) athletes
+  for (const a of RECENT_ATHLETES) {
+    if (nameToCode(a) === code) {
+      loginMode = 'athlete';
+      loginAthlete = a;
+      showDashboard();
+      return;
+    }
+  }
+
+  // Not found
+  errEl.textContent = 'Access code not recognized. Only athletes with test results in the past 30 days are eligible. Contact your coach if you need access.';
+  errEl.hidden = false;
+}
+
+function showDashboard() {
+  document.getElementById('loginScreen').hidden = true;
+  document.getElementById('dashboardApp').hidden = false;
+  document.getElementById('main').hidden = false;
+  document.getElementById('status').textContent = `${ALL_ATHLETES.length} athletes · ${RECENT_ATHLETES.length} active in past 30 days`;
+  buildDropdown();
+  render();
+}
+
+function handleLogout() {
+  loginMode = null;
+  loginAthlete = null;
+  currentAthlete = null;
+  document.getElementById('loginInput').value = '';
+  document.getElementById('loginError').hidden = true;
+  document.getElementById('loginScreen').hidden = false;
+  document.getElementById('dashboardApp').hidden = true;
+  document.getElementById('main').hidden = true;
+  for (const k of Object.keys(charts)) { if (charts[k]) { charts[k].destroy(); charts[k] = null; } }
 }
 
 function buildDropdown() {
   const sel = document.getElementById('athlete');
   sel.innerHTML = '';
-  for (const a of ATHLETES) {
-    const o = document.createElement('option');
-    o.value = a; o.textContent = a;
-    sel.appendChild(o);
+
+  if (loginMode === 'athlete') {
+    // Single athlete — no dropdown, show name in a label
+    sel.style.display = 'none';
+    const label = document.getElementById('athleteLabel');
+    if (label) { label.textContent = loginAthlete; label.style.display = 'inline'; }
+    document.querySelector('label[for="athlete"]').style.display = 'none';
+    currentAthlete = loginAthlete;
+    return;
   }
+
+  // Admin mode — show dropdown with recent + archived sections
+  sel.style.display = '';
+  const label = document.getElementById('athleteLabel');
+  if (label) label.style.display = 'none';
+  document.querySelector('label[for="athlete"]').style.display = '';
+
+  // Recent athletes optgroup
+  if (RECENT_ATHLETES.length) {
+    const og = document.createElement('optgroup');
+    og.label = `Active (past 30 days)`;
+    for (const a of RECENT_ATHLETES) {
+      const o = document.createElement('option');
+      o.value = a; o.textContent = a;
+      og.appendChild(o);
+    }
+    sel.appendChild(og);
+  }
+
+  // Archived athletes optgroup
+  if (ARCHIVED_ATHLETES.length) {
+    const og = document.createElement('optgroup');
+    og.label = 'Archived results';
+    for (const a of ARCHIVED_ATHLETES) {
+      const o = document.createElement('option');
+      o.value = a; o.textContent = a;
+      og.appendChild(o);
+    }
+    sel.appendChild(og);
+  }
+
   const pref = 'Carter Castellano-Staib';
-  currentAthlete = ATHLETES.includes(pref) ? pref : (ATHLETES[0] || null);
+  currentAthlete = ALL_ATHLETES.includes(pref) ? pref : (RECENT_ATHLETES[0] || ALL_ATHLETES[0] || null);
   if (currentAthlete) sel.value = currentAthlete;
-  sel.addEventListener('change', () => { currentAthlete = sel.value; render(); });
+  sel.removeEventListener('change', onAthleteChange);
+  sel.addEventListener('change', onAthleteChange);
+}
+
+function onAthleteChange() {
+  currentAthlete = document.getElementById('athlete').value;
+  render();
 }
 
 // ---------- aggregation ----------
@@ -502,14 +613,23 @@ function buildTable(byDay) {
       t.innerHTML = d === 'dark'
         ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
         : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
-      // Re-render charts with new theme colors
       if (currentAthlete) render();
     });
   }
 })();
 
 // ---------- init ----------
-document.addEventListener('DOMContentLoaded', load);
+document.addEventListener('DOMContentLoaded', () => {
+  loadData();
+  // Login button
+  document.getElementById('loginBtn').addEventListener('click', handleLogin);
+  document.getElementById('loginInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin();
+  });
+  // Logout button
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+});
 
 // ---- print support ----
 window.addEventListener('beforeprint', () => {

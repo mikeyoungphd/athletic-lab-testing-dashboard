@@ -13,103 +13,131 @@
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <img src="assets/al-logo.svg" alt="Athletic Lab" class="logo" />
-      <div class="brand-text">
-        <div class="brand-name">Performance Testing Dashboard</div>
-        <div class="print-athlete" id="printAthlete"></div>
+
+  <!-- ===== Login Screen ===== -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <img src="assets/al-logo.svg" alt="Athletic Lab" class="login-logo" />
+      <h1 class="login-title">Performance Testing Dashboard</h1>
+      <p class="login-subtitle">Enter your access code to view test results</p>
+      <div class="login-form">
+        <input type="password" id="loginInput" class="login-input" placeholder="Access code" autocomplete="off" />
+        <button id="loginBtn" class="login-btn">Enter</button>
+      </div>
+      <div id="loginError" class="login-error" hidden></div>
+      <div id="loginStatus" class="login-status">Loading data…</div>
+      <div class="login-hint">
+        <p>Athletes &amp; parents: use your <strong>firstname.lastname</strong> (e.g. <code>kai.holloway</code>). Only athletes with test results in the past 30 days are eligible.</p>
+        <p>Coaches &amp; staff: use your admin code.</p>
       </div>
     </div>
-    <div class="controls">
-      <button class="theme-toggle" data-theme-toggle aria-label="Toggle dark mode">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-      </button>
-      <label for="athlete" class="ctl-label">Athlete</label>
-      <select id="athlete" class="athlete-select"></select>
-      <button class="print-btn" onclick="window.print()" aria-label="Print dashboard">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        <span>Print</span>
-      </button>
-    </div>
-  </header>
+  </div>
 
-  <div class="status-line" id="status">Loading data…</div>
-
-  <main id="main" hidden>
-    <!-- Test descriptions section -->
-    <section class="test-info" id="testInfo">
-      <div class="test-info-header" onclick="document.getElementById('testInfoBody').classList.toggle('expanded')">
-        <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-        <span>About These Tests</span>
-      </div>
-      <div class="test-info-body" id="testInfoBody">
-        <div class="test-desc-grid">
-          <div class="test-desc-card">
-            <h4>Reactive Strength Index (RSI)</h4>
-            <p>Involves repeated jumping to determine how quickly an athlete can produce force. The index represents jump flight time divided by ground contact time and is highly correlated with sport performance tasks such as sprinting speed. Measured electronically using ForceDecks from VALD, the Laser Contact Grid by MuscleLab, or a sensor from OUTPUT sports.</p>
-          </div>
-          <div class="test-desc-card">
-            <h4>Standing Vertical Jump</h4>
-            <p>Measures the athlete's ability to generate power and jump vertically into the air. Results are recorded in centimeters using ForceDecks from VALD, the Laser Contact Grid by MuscleLab, or a sensor from OUTPUT sports.</p>
-          </div>
-          <div class="test-desc-card">
-            <h4>2-Minute Push Up Test</h4>
-            <p>Assesses upper-body strength and endurance. Each repetition requires the chest to touch a 2-inch raised target, then finish with arms completely extended. The athlete may rest but must maintain four-point contact (hands and feet only) at all times for the full 2 minutes.</p>
-          </div>
-          <div class="test-desc-card">
-            <h4>Pro Agility (5-10-5)</h4>
-            <p>A commonly used test among the NFL, NBA, and NHL. It measures the athlete's ability to accelerate and change direction over a 5-yard, 10-yard, and 5-yard section. Electronically timed using the VALD SmartSpeed System, recorded to the hundredth of a second. Performed for both right and left directions.</p>
-          </div>
-          <div class="test-desc-card">
-            <h4>30 Meter Sprint</h4>
-            <p>May be performed from either a standing start or a downward 3-point start. The athlete sprints as fast as possible over 30 meters. Electronically timed using the VALD SmartSpeed System, with results recorded to the hundredth of a second.</p>
-          </div>
-          <div class="test-desc-card">
-            <h4>Nordic Curl</h4>
-            <p>Assesses eccentric hamstring strength and control. The athlete kneels while a partner holds their ankles, then lowers their torso forward as slowly as possible, resisting the descent using their hamstrings. Duration is recorded in seconds, reflecting the athlete's ability to control eccentric loading.</p>
-          </div>
+  <!-- ===== Dashboard App ===== -->
+  <div id="dashboardApp" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <img src="assets/al-logo.svg" alt="Athletic Lab" class="logo" />
+        <div class="brand-text">
+          <div class="brand-name">Performance Testing Dashboard</div>
+          <div class="print-athlete" id="printAthlete"></div>
         </div>
-        <a href="https://www.athleticlab.com/services/sport-performance/scholastic-testing/" target="_blank" rel="noopener" class="test-learn-more">
-          Learn more about all Athletic Lab sports performance testing protocols
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </a>
       </div>
-    </section>
+      <div class="controls">
+        <button class="theme-toggle" data-theme-toggle aria-label="Toggle dark mode">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+        <label for="athlete" class="ctl-label">Athlete</label>
+        <select id="athlete" class="athlete-select"></select>
+        <span id="athleteLabel" class="athlete-label" style="display:none"></span>
+        <button class="print-btn" onclick="window.print()" aria-label="Print dashboard">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span>Print</span>
+        </button>
+        <button id="logoutBtn" class="logout-btn" aria-label="Log out">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span>Log out</span>
+        </button>
+      </div>
+    </header>
 
-    <section class="charts-grid">
-      <div class="chart-card">
-        <div class="chart-title">Jumping Power and Elasticity</div>
-        <div class="chart-wrap"><canvas id="chart1"></canvas><div class="no-data" id="nodata1" hidden>No data for this athlete</div></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title">Upper Body Power &amp; Endurance</div>
-        <div class="chart-wrap"><canvas id="chart2"></canvas><div class="no-data" id="nodata2" hidden>No data for this athlete</div></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title">Speed &amp; Change of Direction</div>
-        <div class="chart-wrap"><canvas id="chart3"></canvas><div class="no-data" id="nodata3" hidden>No data for this athlete</div></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title">Nordic Curl Eccentric Duration</div>
-        <div class="chart-wrap"><canvas id="chart4"></canvas><div class="no-data" id="nodata4" hidden>No data for this athlete</div></div>
-      </div>
-    </section>
+    <div class="status-line" id="status"></div>
 
-    <section class="table-section">
-      <div class="table-title">Most recent 12 test weeks (best result per week)</div>
-      <div class="table-scroll">
-        <table id="datatable"></table>
-      </div>
-      <div class="footnote">Eligible athletes tested in the past 30 days. When multiple tests fall in one calendar week (Mon-Sun), only the best result for that week is shown (max for RSI / Vertical Jump / Push Up / Nordic; min time for 5-10-5 Right, 5-10-5 Left &amp; 30m). Values beyond 2 SD from an athlete's own norm for an exercise are excluded. Dates indicate the Monday of the test week.</div>
-    </section>
-  </main>
+    <main id="main" hidden>
+      <!-- Test descriptions section -->
+      <section class="test-info" id="testInfo">
+        <div class="test-info-header" onclick="document.getElementById('testInfoBody').classList.toggle('expanded')">
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span>About These Tests</span>
+        </div>
+        <div class="test-info-body" id="testInfoBody">
+          <div class="test-desc-grid">
+            <div class="test-desc-card">
+              <h4>Reactive Strength Index (RSI)</h4>
+              <p>Involves repeated jumping to determine how quickly an athlete can produce force. The index represents jump flight time divided by ground contact time and is highly correlated with sport performance tasks such as sprinting speed. Measured electronically using ForceDecks from VALD, the Laser Contact Grid by MuscleLab, or a sensor from OUTPUT sports.</p>
+            </div>
+            <div class="test-desc-card">
+              <h4>Standing Vertical Jump</h4>
+              <p>Measures the athlete's ability to generate power and jump vertically into the air. Results are recorded in centimeters using ForceDecks from VALD, the Laser Contact Grid by MuscleLab, or a sensor from OUTPUT sports.</p>
+            </div>
+            <div class="test-desc-card">
+              <h4>2-Minute Push Up Test</h4>
+              <p>Assesses upper-body strength and endurance. Each repetition requires the chest to touch a 2-inch raised target, then finish with arms completely extended. The athlete may rest but must maintain four-point contact (hands and feet only) at all times for the full 2 minutes.</p>
+            </div>
+            <div class="test-desc-card">
+              <h4>Pro Agility (5-10-5)</h4>
+              <p>A commonly used test among the NFL, NBA, and NHL. It measures the athlete's ability to accelerate and change direction over a 5-yard, 10-yard, and 5-yard section. Electronically timed using the VALD SmartSpeed System, recorded to the hundredth of a second. Performed for both right and left directions.</p>
+            </div>
+            <div class="test-desc-card">
+              <h4>30 Meter Sprint</h4>
+              <p>May be performed from either a standing start or a downward 3-point start. The athlete sprints as fast as possible over 30 meters. Electronically timed using the VALD SmartSpeed System, with results recorded to the hundredth of a second.</p>
+            </div>
+            <div class="test-desc-card">
+              <h4>Nordic Curl</h4>
+              <p>Assesses eccentric hamstring strength and control. The athlete kneels while a partner holds their ankles, then lowers their torso forward as slowly as possible, resisting the descent using their hamstrings. Duration is recorded in seconds, reflecting the athlete's ability to control eccentric loading.</p>
+            </div>
+          </div>
+          <a href="https://www.athleticlab.com/services/sport-performance/scholastic-testing/" target="_blank" rel="noopener" class="test-learn-more">
+            Learn more about all Athletic Lab sports performance testing protocols
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </a>
+        </div>
+      </section>
 
-  <div id="error" class="error-banner" hidden></div>
+      <section class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">Jumping Power and Elasticity</div>
+          <div class="chart-wrap"><canvas id="chart1"></canvas><div class="no-data" id="nodata1" hidden>No data for this athlete</div></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Upper Body Power &amp; Endurance</div>
+          <div class="chart-wrap"><canvas id="chart2"></canvas><div class="no-data" id="nodata2" hidden>No data for this athlete</div></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Speed &amp; Change of Direction</div>
+          <div class="chart-wrap"><canvas id="chart3"></canvas><div class="no-data" id="nodata3" hidden>No data for this athlete</div></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Nordic Curl Eccentric Duration</div>
+          <div class="chart-wrap"><canvas id="chart4"></canvas><div class="no-data" id="nodata4" hidden>No data for this athlete</div></div>
+        </div>
+      </section>
 
-  <footer class="footer">
-    <span>Powered by <a href="https://www.athleticlab.com" target="_blank" rel="noopener">Athletic Lab</a> · Data from live testing sessions</span>
-  </footer>
+      <section class="table-section">
+        <div class="table-title">Most recent 12 test weeks (best result per week)</div>
+        <div class="table-scroll">
+          <table id="datatable"></table>
+        </div>
+        <div class="footnote">Eligible athletes tested in the past 30 days. When multiple tests fall in one calendar week (Mon-Sun), only the best result for that week is shown (max for RSI / Vertical Jump / Push Up / Nordic; min time for 5-10-5 Right, 5-10-5 Left &amp; 30m). Values beyond 2 SD from an athlete's own norm for an exercise are excluded. Dates indicate the Monday of the test week.</div>
+      </section>
+    </main>
+
+    <div id="error" class="error-banner" hidden></div>
+
+    <footer class="footer">
+      <span>Powered by <a href="https://www.athleticlab.com" target="_blank" rel="noopener">Athletic Lab</a> · Data from live testing sessions</span>
+    </footer>
+  </div>
 
   <script src="app.js"></script>
 </body>

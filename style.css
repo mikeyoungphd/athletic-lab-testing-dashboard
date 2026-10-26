@@ -47,6 +47,7 @@
 }
 
 /* ---- reset ---- */
+[hidden] { display: none !important; }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 body {
@@ -324,6 +325,130 @@ main {
 }
 
 /* ============================================================
+   LOGIN SCREEN
+   ============================================================ */
+.login-screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--crimson);
+}
+.login-card {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  padding: 36px 32px 28px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+}
+.login-logo { height: 42px; margin: 0 auto 18px; }
+.login-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.login-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 22px;
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.login-input {
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-family: 'Exo', system-ui, sans-serif;
+  background: var(--surface-alt);
+  color: var(--text);
+  text-align: center;
+  letter-spacing: 1px;
+}
+.login-input:focus {
+  outline: none;
+  border-color: var(--crimson);
+  box-shadow: 0 0 0 2px rgba(156,27,32,0.12);
+}
+.login-btn {
+  padding: 11px 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--crimson);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.login-btn:hover { background: var(--crimson-dark); }
+.login-error {
+  margin-top: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  color: var(--crimson-dark);
+  background: #fde8e8;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.login-status {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.login-hint {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  text-align: left;
+}
+.login-hint p { margin-bottom: 6px; }
+.login-hint code {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: var(--crimson);
+  background: var(--surface-alt);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11.5px;
+}
+.login-hint strong { color: var(--text); }
+
+/* ---- logout button ---- */
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.18s;
+}
+.logout-btn:hover { background: rgba(255,255,255,0.15); }
+
+/* ---- athlete label (single-athlete mode) ---- */
+.athlete-label {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 12px;
+}
+
+/* ============================================================
    PRINT — landscape, fill the page
    ============================================================ */
 @media print {
@@ -333,7 +458,7 @@ main {
   html, body { background: #fff; width: 100%; height: 100%; overflow: hidden; }
 
   .controls, .status-line, .footnote, .error-banner, .no-data, .footer,
-  .test-info, .theme-toggle, .print-btn { display: none !important; }
+  .test-info, .theme-toggle, .print-btn, .logout-btn, .login-screen { display: none !important; }
 
   .print-athlete { display: block; font-size: 13px; font-weight: 700; margin-top: 2px; }
 
