@@ -172,7 +172,7 @@ async function loadData() {
 
     RAW = normalize(csv);
     computeAthletes();
-    loginStatus.textContent = `Data loaded · ${ALL_ATHLETES.length} athletes · ${RECENT_ATHLETES.length} active`;
+    loginStatus.textContent = 'Data loaded';
     loginBtn.disabled = false;
     loginInput.disabled = false;
     loginInput.focus();
