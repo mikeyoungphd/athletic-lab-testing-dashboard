@@ -46,9 +46,24 @@ let loginAthlete = null;     // athlete name when loginMode === 'athlete'
 // ---------- date helpers ----------
 function parseDate(s) {
   if (!s) return null;
-  const m = String(s).match(/^(\d{4})\/(\d{2})\/(\d{2})/);
-  if (!m) return null;
-  return new Date(+m[1], +m[2] - 1, +m[3]).getTime();
+  const str = String(s).trim();
+  // YYYY/M/D (e.g. 2026/01/09 0:05:00)
+  let m = str.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if (m) return mkDate(+m[1], +m[2], +m[3]);
+  // M/D/YY or M/D/YYYY (e.g. 8/3/26 20:13, 12/31/24 15:24)
+  m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (m) {
+    let y = +m[3];
+    if (y < 100) y += 2000;
+    return mkDate(y, +m[1], +m[2]);
+  }
+  return null;
+}
+function mkDate(y, mo, d) {
+  const dt = new Date(y, mo - 1, d);
+  // reject rollover dates (e.g. 13/45/26) where components shift
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  return dt.getTime();
 }
 function fmtDate(ts) {
   const d = new Date(ts);
